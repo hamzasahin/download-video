@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f7f3ec" />
+    <meta name="description" content="Neşe için sessiz bir indirme atölyesi." />
+    <title>atölye — Neşe için</title>
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Inter:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="masthead">
+      <p class="kicker" data-i18n="kicker">bir indirme atölyesi</p>
+      <h1 class="greeting">
+        <span class="greeting-line" id="greeting">İyi günler</span><span class="comma">,</span>
+        <span class="name">Neşe</span><span class="period">.</span>
+      </h1>
+      <button
+        class="lang-toggle"
+        id="langToggle"
+        type="button"
+        aria-label="Switch language"
+        title="EN / TR"
+      >EN</button>
+    </header>
+
+    <main>
+      <section class="paste" aria-labelledby="paste-label">
+        <label class="field-label" id="paste-label" for="url" data-i18n="pasteLabel">
+          bağlantı
+        </label>
+        <form id="urlForm" autocomplete="off" novalidate>
+          <input
+            id="url"
+            name="url"
+            type="url"
+            inputmode="url"
+            spellcheck="false"
+            autocapitalize="off"
+            autocorrect="off"
+            placeholder="bir youtube bağlantısı yapıştır…"
+            data-i18n-attr="placeholder:pastePlaceholder"
+            aria-describedby="hint"
+          />
+          <button class="enter-cue" type="submit" aria-label="Devam et">↵</button>
+        </form>
+        <p class="hint" id="hint" data-i18n="hint">
+          yapıştır, enter’a bas. gerisi kendiliğinden olur.
+        </p>
+      </section>
+
+      <section class="stage" id="stage" aria-live="polite">
+        <!-- idle, preview, working, error views are rendered here -->
+      </section>
+
+      <section class="recent" id="recent" hidden>
+        <h2 class="section-label" data-i18n="recentLabel">son indirilenler</h2>
+        <ul id="recentList"></ul>
+        <button
+          class="ghost-btn"
+          id="clearRecent"
+          type="button"
+          data-i18n="clearRecent"
+        >listeyi temizle</button>
+      </section>
+
+      <details class="settings">
+        <summary data-i18n="settingsLabel">ayarlar</summary>
+        <div class="settings-body">
+          <p class="prose" data-i18n="settingsIntro">
+            Bu uygulama, indirmeleri çıkaran küçük bir aracıya
+            (<a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a>)
+            bağlanır. Genel <code>api.cobalt.tools</code> tarayıcılardan kullanıma kapalı;
+            bu yüzden kendi cobalt sunucumuzu kuruyor ve adresini buraya yazıyoruz.
+          </p>
+
+          <label class="field-label" for="apiBase" data-i18n="apiBaseLabel">
+            cobalt sunucusu
+          </label>
+          <input
+            id="apiBase"
+            type="url"
+            placeholder="https://cobalt.kendi-sunucum.com"
+            spellcheck="false"
+            autocapitalize="off"
+            autocorrect="off"
+          />
+
+          <label class="field-label" for="apiKey" data-i18n="apiKeyLabel">
+            api anahtarı (varsa)
+          </label>
+          <input
+            id="apiKey"
+            type="text"
+            placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+            spellcheck="false"
+            autocapitalize="off"
+            autocorrect="off"
+          />
+
+          <div class="settings-actions">
+            <button class="ghost-btn" id="saveSettings" type="button" data-i18n="save">kaydet</button>
+            <span class="settings-status" id="settingsStatus" aria-live="polite"></span>
+          </div>
+
+          <p class="prose tiny" data-i18n="settingsHelp">
+            Anahtar ve adres yalnızca bu cihazda, tarayıcıda saklanır. Hiçbir yere gönderilmez.
+          </p>
+        </div>
+      </details>
+    </main>
+
+    <footer>
+      <p class="colophon">
+        <span data-i18n="colophon">elle dizilmiştir · 2026</span>
+      </p>
+    </footer>
+
+    <!-- templates -->
+    <template id="tpl-idle">
+      <div class="idle">
+        <blockquote class="fragment" id="fragment">
+          <p class="fragment-text"></p>
+          <button
+            class="fragment-attr"
+            type="button"
+            aria-label="kim yazmıştı?"
+          >—</button>
+          <cite class="fragment-author" hidden></cite>
+        </blockquote>
+        <!-- Lavinya, sleeping. -->
+        <svg
+          class="lavinya"
+          viewBox="0 0 64 22"
+          aria-labelledby="lavinya-title"
+          role="img"
+        >
+          <title id="lavinya-title">Lavinya</title>
+          <g fill="none" stroke="currentColor" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round">
+            <!-- curled sleeping cat silhouette -->
+            <path d="M6 18 C 6 10, 16 6, 26 7 C 34 7, 42 10, 50 12 C 56 13, 58 15, 58 18 Z" />
+            <!-- ear -->
+            <path d="M48 12 L 50 8 L 53 12" />
+            <!-- tail tucked -->
+            <path d="M9 17 C 4 16, 4 13, 9 12" />
+            <!-- closed eye -->
+            <path d="M51 13 q 1 1 2 0" />
+            <!-- whisker hint -->
+            <path d="M54 14 l 2 0" opacity="0.6"/>
+            <!-- small zzz -->
+            <path d="M57 6 l 3 0 l -3 3 l 3 0" opacity="0.5"/>
+          </g>
+        </svg>
+      </div>
+    </template>
+
+    <template id="tpl-preview">
+      <article class="preview">
+        <figure class="thumb-wrap">
+          <img class="thumb" alt="" />
+          <figcaption class="duration"></figcaption>
+        </figure>
+        <div class="meta">
+          <p class="channel"></p>
+          <h2 class="title"></h2>
+          <p class="filename-row">
+            <span class="field-label small" data-i18n="filenameLabel">dosya adı</span>
+            <code class="filename"></code>
+            <button
+              class="copy-btn"
+              type="button"
+              data-i18n="copyFilename"
+              aria-label="dosya adını kopyala"
+            >kopyala</button>
+          </p>
+          <fieldset class="presets">
+            <legend class="field-label" data-i18n="formatLabel">biçim</legend>
+            <div class="preset-grid">
+              <button class="preset" type="button" data-preset="podcast">
+                <span class="preset-name" data-i18n="presetPodcast">podcast notları için</span>
+                <span class="preset-detail" data-i18n="presetPodcastDetail">ses · mp3</span>
+              </button>
+              <button class="preset" type="button" data-preset="study">
+                <span class="preset-name" data-i18n="presetStudy">yazı çalışması için</span>
+                <span class="preset-detail" data-i18n="presetStudyDetail">video · 1080p</span>
+              </button>
+              <button class="preset" type="button" data-preset="quick">
+                <span class="preset-name" data-i18n="presetQuick">hızlı izleme</span>
+                <span class="preset-detail" data-i18n="presetQuickDetail">video · 720p</span>
+              </button>
+              <button class="preset" type="button" data-preset="listen">
+                <span class="preset-name" data-i18n="presetListen">sadece dinlemek için</span>
+                <span class="preset-detail" data-i18n="presetListenDetail">ses · küçük</span>
+              </button>
+            </div>
+          </fieldset>
+        </div>
+      </article>
+    </template>
+
+    <template id="tpl-working">
+      <p class="working">
+        <span class="working-text" data-i18n="working">bir saniye, hazırlanıyor</span>
+        <span class="dots" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </span>
+      </p>
+    </template>
+
+    <template id="tpl-error">
+      <p class="error" role="alert"></p>
+    </template>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
