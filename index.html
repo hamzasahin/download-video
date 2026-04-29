@@ -31,6 +31,7 @@
         id="langToggle"
         type="button"
         aria-label="Switch language"
+        data-i18n-attr="aria-label:ariaLangToggle"
         title="EN / TR"
       >EN</button>
     </header>
@@ -53,7 +54,12 @@
             data-i18n-attr="placeholder:pastePlaceholder"
             aria-describedby="hint"
           />
-          <button class="enter-cue" type="submit" aria-label="Devam et">↵</button>
+          <button
+            class="enter-cue"
+            type="submit"
+            aria-label="Devam et"
+            data-i18n-attr="aria-label:ariaSubmit"
+          >↵</button>
         </form>
         <p class="hint" id="hint" data-i18n="hint">
           yapıştır, enter’a bas. gerisi kendiliğinden olur.
@@ -92,6 +98,7 @@
             id="apiBase"
             type="url"
             placeholder="https://cobalt.kendi-sunucum.com"
+            data-i18n-attr="placeholder:apiBasePlaceholder"
             spellcheck="false"
             autocapitalize="off"
             autocorrect="off"
@@ -136,6 +143,7 @@
             class="fragment-attr"
             type="button"
             aria-label="kim yazmıştı?"
+            data-i18n-attr="aria-label:ariaFragmentAttr"
           >—</button>
           <cite class="fragment-author" hidden></cite>
         </blockquote>
@@ -181,6 +189,7 @@
               class="copy-btn"
               type="button"
               data-i18n="copyFilename"
+              data-i18n-attr="aria-label:ariaCopyFilename"
               aria-label="dosya adını kopyala"
             >kopyala</button>
           </p>
