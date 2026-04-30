@@ -162,11 +162,21 @@ rather than at breakpoints.
 * The colophon at the bottom reads *"elle dizilmiştir · 2026"* — *set by hand*,
   the way a small magazine signs off.
 
-## 13. Settings UX
+## 13. Settings UX (the "advanced" drawer)
 
-The settings drawer is closed by default.  The summary uses a custom **+** /
-**−** in ochre instead of the disclosure triangle.  When she saves, a small
-italic *kaydedildi* fades in for 1.6s in ochre — no green check, no toast.
+Once `DEFAULT_API_BASE` is wired to the deployed Cloudflare Worker, **she
+should never need this drawer.**  It stays as a power-user override: a single
+URL field for pointing the app at a different cobalt or Worker if the default
+ever breaks.  No API key field — the Worker holds the key as a server-side
+secret, so nothing sensitive ever lives in her browser.
+
+The summary uses a custom **+** / **−** in ochre instead of the disclosure
+triangle.  When she saves, a small italic *kaydedildi* fades in for 1.6s in
+ochre — no green check, no toast.
+
+The drawer auto-opens **only** in the unconfigured state (`DEFAULT_API_BASE`
+empty *and* no override) — that's the dev / fork case, never her case once
+deployed.
 
 ## 14. Favicon
 
@@ -174,6 +184,30 @@ A single typeset italic serif **n** with a small ochre **·** above-right —
 reads as the start of *neşe* set in a magazine, not as a logo.  Drawn by
 hand in SVG so it stays sharp on every screen.  (No paw print here; that
 would be a second Lavinya placement.)
+
+---
+
+## How "it just works" actually works
+
+The architecture is a thin two-stage proxy so Neşe never has to configure
+anything:
+
+```
+  her browser  ──▶  Cloudflare Worker  ──▶  self-hosted cobalt
+                    (Origin-pinned,           (API-key-protected,
+                     holds the key)            not browser-callable)
+```
+
+The cobalt API key lives as a Worker secret — it isn't in git, isn't in the
+JS bundle, isn't in her browser.  The Worker only accepts requests whose
+`Origin` matches the GitHub Pages domain, so a casual leak of the Worker URL
+doesn't let strangers ride her cobalt instance from a browser.  Cobalt's
+tunnel URL is downloaded by the browser directly (anchor click, no CORS), so
+the Worker doesn't proxy gigabytes of video.
+
+For her: paste, pick, download.  No setup, no key, no drawer.
+
+For the maintainer: see `cloudflare-worker/README.md`.
 
 ---
 

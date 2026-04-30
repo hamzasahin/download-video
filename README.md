@@ -1,8 +1,9 @@
 # atölye — for Neşe
 
 A small, quiet web app for downloading YouTube videos — set by hand, in
-Turkish first, with restraint.  Hosted on GitHub Pages, no backend of its own,
-no tracking.
+Turkish first, with restraint.  Hosted on GitHub Pages.  Once it is wired up,
+Neşe pastes a link, picks a format, and it downloads — there is nothing to
+configure on her side.
 
 > Bu README iki dilde yazıldı.  This README is bilingual.
 
@@ -12,9 +13,9 @@ no tracking.
 
 ### Bu nedir?
 
-Bir bağlantı yapıştırırsın, biçimi seçersin (podcast notları için, yazı çalışması
-için, hızlı izleme, sadece dinlemek için), iner.  Dosya adları doğrudan
-Obsidian kasanın kuralına uyar: `2026-04-29 — başlık.uzantı`.
+Bir bağlantı yapıştırırsın, biçimi seçersin (podcast notları için, yazı
+çalışması için, hızlı izleme, sadece dinlemek için), iner.  Dosya adları
+doğrudan Obsidian kasanın kuralına uyar: `2026-04-29 — başlık.uzantı`.
 
 Son on indirilen, yalnızca senin tarayıcında saklanır.  Hiçbir yere
 gönderilmez.
@@ -22,76 +23,67 @@ gönderilmez.
 ### Mimari
 
 GitHub Pages statik siteler barındırır; tarayıcı YouTube’dan doğrudan medya
-indiremez (CORS ve YouTube’un bot korumaları).  Bu yüzden uygulama gerçek
-çıkarmayı bir aracıya yaptırır: [**cobalt**](https://github.com/imputnet/cobalt).
+indiremez (CORS ve YouTube’un bot korumaları).  Bu yüzden gerçek çıkarmayı
+küçük bir aracıya yaptırıyoruz: [**cobalt**](https://github.com/imputnet/cobalt).
 
-Cobalt’ın genel sunucusu (`api.cobalt.tools`) artık tarayıcılardan üçüncü taraf
-çağrılara kapalı (bot koruması).  Bu yüzden **kendi cobalt’ımızı kuruyoruz** ve
-adresini uygulamanın *ayarlar* bölümünden tanıtıyoruz.
+Cobalt’ın genel sunucusu (`api.cobalt.tools`) tarayıcılardan üçüncü taraf
+çağrılara kapalı.  İki kademeli kuruyoruz:
 
-### Kendi cobalt sunucunu kurmak (Docker, küçük bir VPS)
+```
+  tarayıcı  ──POST /──▶  Cloudflare Worker  ──POST /──▶  cobalt
+                          (Origin kontrolü,                (API anahtarını
+                           anahtarı ekler)                  ister)
+```
 
-1. Bir VPS al (Hetzner, DigitalOcean — aylık birkaç dolar yeter) ve sub-domain
-   yönlendir, örn. `cobalt.alaniadin.com`.
-2. Docker ile cobalt’ı çalıştır.  Resmi rehber:
-   <https://github.com/imputnet/cobalt/blob/main/docs/run-an-instance.md>.
-   Kısaca:
+Worker, cobalt API anahtarını **gizli olarak** tutar; tarayıcıya hiç
+gitmez.  Worker yalnızca `https://hamzasahin.github.io` Origin’inden
+gelen çağrıları kabul eder.  Cobalt tunnel cevabı verirse, tarayıcı o tek
+seferlik URL’ye doğrudan gider — Worker dosyayı taşımaz.
+
+### Bir kerelik kurulum (Hamza için)
+
+Tüm adımlar `cloudflare-worker/README.md` içinde detaylı.  Özet:
+
+1. **Cobalt’ı bir yere kur.**  Hetzner CX22 + Docker + Caddy (~€4/ay) en
+   pratik yol.  API anahtarını aç (`API_KEY_URL`); CORS’u kapalı tut.
+2. **Worker’ı dağıt.**
    ```bash
-   mkdir cobalt && cd cobalt
-   curl -O https://raw.githubusercontent.com/imputnet/cobalt/main/docker-compose.example.yml
-   mv docker-compose.example.yml docker-compose.yml
-   # docker-compose.yml içindeki API_URL ve diğer ayarları kendi sub-domain’ine göre düzenle
-   docker compose up -d
+   cd cloudflare-worker
+   npx wrangler deploy
+   npx wrangler secret put COBALT_URL
+   npx wrangler secret put COBALT_API_KEY
    ```
-3. Önüne nginx/caddy ile HTTPS ekle.  Caddy en kısa yol:
-   ```
-   cobalt.alaniadin.com {
-     reverse_proxy localhost:9000
-   }
-   ```
-4. Tarayıcı çağrılarına izin vermek için `API_URL` ortam değişkenini
-   sub-domain’ine, ve `CORS_URL` ya da `CORS_WILDCARD=1` ayarını cobalt
-   konfigine göre düzenle (en güncel anahtar isimleri için yukarıdaki
-   resmi rehbere bak).
-5. (Opsiyonel) Kötüye kullanımı sınırlamak için bir API anahtarı ayarla.
-   Cobalt belgelerinden `keys.json` örneğine göz at; UUID üret, anahtarı sakla.
-
-### Bu uygulamayı bağlamak
-
-1. Siteyi aç: <https://hamzasahin.github.io/download-video/> (deploy
-   sonrası).
-2. Aşağı in, **ayarlar**’ı aç.
-3. *cobalt sunucusu* alanına `https://cobalt.alaniadin.com` yaz.
-4. Anahtarın varsa *api anahtarı* alanına yapıştır.
-5. **kaydet**.  Adres ve anahtar yalnızca senin tarayıcında saklanır.
-
-### Eğer cobalt bir gün kapanırsa
-
-`app.js` dosyasının başında `cobaltCall` adında küçük bir fonksiyon var.
-Sadece o iki yer (gönderilen JSON gövdesi ve cevabı yorumlama) farklı bir API
-için yeniden yazılmalı.  Birkaç alternatif:
-
-* Cloudflare Worker üzerinden bir `yt-dlp` proxy (yt-dlp WASM +
-  worker-fetch).  Sürekli güncellenen tek-dosya bir worker yazıp `apiBase`
-  alanına onun adresini girmek yeter.
-* Kendi sunucunda `yt-dlp --print-json` çağıran küçük bir Express/FastAPI
-  servisi.  Aynı şekilde adresini *ayarlar*’dan ver.
+3. **Worker URL’sini `app.js` içinde `DEFAULT_API_BASE` olarak yapıştır,
+   commit et.**  Pages otomatik dağıtır.
+4. Bitti.  Neşe siteyi açar, çalışır.
 
 ### Geliştirme
 
-Hiçbir derleme adımı yok.  `index.html`, `styles.css`, `app.js`.  Statik
-sunucuyla çalıştır:
+Hiçbir derleme adımı yok.  `index.html`, `styles.css`, `app.js`.
 
 ```bash
 python3 -m http.server 8000
 # ardından http://localhost:8000
 ```
 
+`DEFAULT_API_BASE` boş bırakıldığında uygulama `ayarlar` çekmecesini
+açar; oraya geçici bir cobalt veya Worker adresi girersin.
+
 ### Yayınlama (GitHub Pages)
 
 `main` dalına push.  Repo’nun *Settings → Pages* bölümünde **GitHub Actions**
 seçili olsun.  `.github/workflows/pages.yml` zaten dahili — push’tan sonra
-birkaç dakika içinde yayında.
+birkaç dakika içinde yayında.  Worker dizini Pages’e dahil edilmez.
+
+### Eğer cobalt bir gün kapanırsa
+
+`cobaltCall` (`app.js`) cobalt’a özel iki şey yapar: gönderdiği JSON
+gövdesi ve cevabı yorumlama.  Yeni bir kaynağa geçirmek için yalnızca o
+fonksiyon ve aynı şeyi konuşan Worker güncellenir.  Yedek planlar:
+
+* Worker’ın içinde `yt-dlp` çağıran bir mikro-servis (Fly.io, Render).
+  Worker olduğu gibi kalır, sadece `COBALT_URL` o yeni servise yönelir.
+* Cloudflare Tunnel + ev sunucusunda `yt-dlp` veren küçük bir API.
 
 ---
 
@@ -103,83 +95,80 @@ A small, hand-set web app: paste a YouTube link, pick a purpose-named format
 (*for podcast notes*, *for close study*, *quick watch*, *just to listen*),
 download.  Filenames come out shaped for Obsidian: `2026-04-29 — title.ext`.
 
-The last ten downloads live only in your browser.  Nothing is sent anywhere.
+The last ten downloads live only in this browser.  Nothing is sent anywhere.
 
 ### Architecture
 
-GitHub Pages serves static files only; browsers cannot extract YouTube media
-directly (CORS and anti-scraping).  So the app delegates the real extraction
-to [**cobalt**](https://github.com/imputnet/cobalt).
+GitHub Pages serves static files only; browsers can't extract YouTube media
+directly (CORS + anti-scraping).  We delegate the real extraction to
+[**cobalt**](https://github.com/imputnet/cobalt) and put a thin Cloudflare
+Worker in front of it:
 
-Cobalt’s public host (`api.cobalt.tools`) is now closed to third-party browser
-calls (bot protection).  We therefore **self-host cobalt** and tell this app
-its address through the *settings* drawer.
+```
+  browser  ──POST /──▶  Cloudflare Worker  ──POST /──▶  cobalt
+                         (Origin check,                  (key-protected)
+                          adds key from secret)
+```
 
-### Self-hosting cobalt (Docker on a cheap VPS)
+The Worker holds cobalt's API key as a Worker secret — it never reaches
+the browser.  The Worker only accepts requests whose `Origin` matches
+the configured allowlist (default: `https://hamzasahin.github.io`).
+When cobalt returns a `tunnel` URL, the browser hits that URL directly
+(anchor click; the Worker does not proxy file bytes).
 
-1. Rent a VPS (Hetzner, DigitalOcean — a few dollars a month is plenty), point
-   a subdomain at it, e.g. `cobalt.your-domain.com`.
-2. Run cobalt with Docker.  Official guide:
-   <https://github.com/imputnet/cobalt/blob/main/docs/run-an-instance.md>.
-   Roughly:
+### One-time setup (for the maintainer)
+
+Full steps in [`cloudflare-worker/README.md`](cloudflare-worker/README.md).
+Outline:
+
+1. **Stand up cobalt.**  Hetzner CX22 + Docker + Caddy (~€4/mo) is the
+   path of least resistance.  Turn API keys on (`API_KEY_URL`); leave
+   CORS off so the cobalt host isn't browser-callable.
+2. **Deploy the Worker.**
    ```bash
-   mkdir cobalt && cd cobalt
-   curl -O https://raw.githubusercontent.com/imputnet/cobalt/main/docker-compose.example.yml
-   mv docker-compose.example.yml docker-compose.yml
-   # edit API_URL etc. in docker-compose.yml to match your subdomain
-   docker compose up -d
+   cd cloudflare-worker
+   npx wrangler deploy
+   npx wrangler secret put COBALT_URL
+   npx wrangler secret put COBALT_API_KEY
    ```
-3. Put HTTPS in front (Caddy is the shortest path):
-   ```
-   cobalt.your-domain.com {
-     reverse_proxy localhost:9000
-   }
-   ```
-4. To allow browser calls, set `API_URL` to your subdomain and configure
-   `CORS_URL` / `CORS_WILDCARD=1` per the cobalt docs (env names drift; check
-   the link above for current spelling).
-5. *Optional:* set an API key to keep abuse down.  See cobalt’s `keys.json`
-   example; generate a UUID, keep it secret.
-
-### Wiring the app to your instance
-
-1. Open the deployed site:
-   <https://hamzasahin.github.io/download-video/>.
-2. Scroll to **settings**.
-3. Put `https://cobalt.your-domain.com` in *cobalt server*.
-4. If you set one, paste the UUID in *api key*.
-5. Hit **save**.  Both values stay in this browser only.
-
-### If cobalt ever breaks
-
-There’s a single small function `cobaltCall` near the top of `app.js`.  Only
-two things need changing for any drop-in replacement: the request body and the
-response interpretation.  Drop-in alternatives:
-
-* A Cloudflare Worker wrapping `yt-dlp` (or `yt-dlp-wasm`).  Write a one-file
-  worker, point *cobalt server* at its URL.
-* A tiny Express / FastAPI service on the same VPS that calls
-  `yt-dlp --print-json`.  Same idea — give it a public URL, point the app at
-  it.
+3. **Paste the Worker URL into `app.js`** as `DEFAULT_API_BASE`, commit.
+   Pages redeploys automatically.
+4. Done.  Neşe opens the page; it works.
 
 ### Development
 
-No build step.  Three files: `index.html`, `styles.css`, `app.js`.  Serve
-them statically:
+No build step.  `index.html`, `styles.css`, `app.js`.
 
 ```bash
 python3 -m http.server 8000
-# then http://localhost:8000
+# http://localhost:8000
 ```
+
+When `DEFAULT_API_BASE` is empty, the app opens its **settings** drawer
+on first load so you can paste a temporary cobalt or Worker URL while
+developing.
 
 ### Deployment
 
-Push to `main`.  In the repo’s *Settings → Pages*, choose **GitHub Actions**
-as source.  The included `.github/workflows/pages.yml` will publish on push.
+Push to `main`.  In *Settings → Pages*, choose **GitHub Actions** as the
+source.  `.github/workflows/pages.yml` only copies the four
+browser-facing files; the `cloudflare-worker/` directory stays out of
+the Pages bundle.
+
+### If cobalt ever breaks
+
+`cobaltCall` in `app.js` does two cobalt-specific things: the JSON body
+it sends and how it interprets the response.  Swap providers by editing
+that function and the matching forward in the Worker.  Drop-in options:
+
+* A `yt-dlp` micro-service hosted on Fly.io or Render — the Worker stays
+  identical, you only change `COBALT_URL`.
+* Cloudflare Tunnel to a home-server `yt-dlp` API.
 
 ---
 
 ### A note
 
-This was built for one specific person.  See `PERSONALIZATION.md` for every
-choice that was made with her in mind.
+This was built for one specific person.  See
+[`PERSONALIZATION.md`](PERSONALIZATION.md) for every choice that was made
+with her in mind.

@@ -85,14 +85,12 @@
         <summary data-i18n="settingsLabel">ayarlar</summary>
         <div class="settings-body">
           <p class="prose" data-i18n="settingsIntro">
-            Bu uygulama, indirmeleri çıkaran küçük bir aracıya
-            (<a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a>)
-            bağlanır. Genel <code>api.cobalt.tools</code> tarayıcılardan kullanıma kapalı;
-            bu yüzden kendi cobalt sunucumuzu kuruyor ve adresini buraya yazıyoruz.
+            Sunucu zaten ayarlı; bu kapı yalnızca işler ters giderse açılmak için.
+            Kendi cobalt veya proxy adresini girersen onun üzerinden çalışır.
           </p>
 
           <label class="field-label" for="apiBase" data-i18n="apiBaseLabel">
-            cobalt sunucusu
+            sunucu adresi
           </label>
           <input
             id="apiBase"
@@ -104,25 +102,13 @@
             autocorrect="off"
           />
 
-          <label class="field-label" for="apiKey" data-i18n="apiKeyLabel">
-            api anahtarı (varsa)
-          </label>
-          <input
-            id="apiKey"
-            type="text"
-            placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-            spellcheck="false"
-            autocapitalize="off"
-            autocorrect="off"
-          />
-
           <div class="settings-actions">
             <button class="ghost-btn" id="saveSettings" type="button" data-i18n="save">kaydet</button>
             <span class="settings-status" id="settingsStatus" aria-live="polite"></span>
           </div>
 
           <p class="prose tiny" data-i18n="settingsHelp">
-            Anahtar ve adres yalnızca bu cihazda, tarayıcıda saklanır. Hiçbir yere gönderilmez.
+            Adres yalnızca bu cihazda, tarayıcıda saklanır. Hiçbir yere gönderilmez.
           </p>
         </div>
       </details>

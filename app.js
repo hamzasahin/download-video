@@ -1,10 +1,16 @@
 // atölye — for Neşe.
 // vanilla module. zero runtime deps.
 
+// The deployed Cloudflare Worker proxy. The Worker holds the cobalt
+// API key as a secret and pins the allowed Origin, so the browser
+// never sees a key. Set this once after deploying the Worker (see
+// /cloudflare-worker/README.md). Leave empty to fall back to the
+// per-user override flow in the settings drawer.
+const DEFAULT_API_BASE = "";
+
 const STORAGE = {
   lang: "atolye.lang",
   apiBase: "atolye.apiBase",
-  apiKey: "atolye.apiKey",
   recent: "atolye.recent",
 };
 
@@ -19,15 +25,12 @@ const COPY = {
     clearRecent: "listeyi temizle",
     settingsLabel: "ayarlar",
     settingsIntro:
-      "Bu uygulama, indirmeleri çıkaran küçük bir aracıya " +
-      "(<a href='https://github.com/imputnet/cobalt' target='_blank' rel='noopener'>cobalt</a>) bağlanır. " +
-      "Genel <code>api.cobalt.tools</code> tarayıcılardan kullanıma kapalı; " +
-      "bu yüzden kendi cobalt sunucumuzu kuruyor ve adresini buraya yazıyoruz.",
-    apiBaseLabel: "cobalt sunucusu",
-    apiKeyLabel: "api anahtarı (varsa)",
+      "Sunucu zaten ayarlı; bu kapı yalnızca işler ters giderse açılmak için. " +
+      "Kendi cobalt veya proxy adresini girersen onun üzerinden çalışır.",
+    apiBaseLabel: "sunucu adresi",
     save: "kaydet",
     settingsHelp:
-      "Anahtar ve adres yalnızca bu cihazda, tarayıcıda saklanır. Hiçbir yere gönderilmez.",
+      "Adres yalnızca bu cihazda, tarayıcıda saklanır. Hiçbir yere gönderilmez.",
     saved: "kaydedildi.",
     colophon: "elle dizilmiştir · 2026",
     filenameLabel: "dosya adı",
@@ -59,7 +62,7 @@ const COPY = {
     errPicker:
       "Bu bağlantı birden fazla parça içeriyor — şimdilik tek videolu bağlantılarla daha rahatım.",
     firstRunHint:
-      "Hoş geldin. İlk seferinde aşağıdaki <em>ayarlar</em>’dan bir cobalt adresi girmemiz gerek; bir kerelik bir iş.",
+      "Sunucu henüz ayarlanmamış. <code>app.js</code> içine <code>DEFAULT_API_BASE</code> ekleyin ya da aşağıdaki <em>ayarlar</em> bölümünden bir adres girin.",
     ariaLangToggle: "Dili değiştir",
     ariaSubmit: "Devam et",
     ariaFragmentAttr: "kim yazmıştı?",
@@ -75,15 +78,12 @@ const COPY = {
     clearRecent: "clear list",
     settingsLabel: "settings",
     settingsIntro:
-      "This little app talks to a small helper " +
-      "(<a href='https://github.com/imputnet/cobalt' target='_blank' rel='noopener'>cobalt</a>) " +
-      "that does the actual extraction. The public <code>api.cobalt.tools</code> " +
-      "is closed to browsers, so we run our own and point this app at it.",
-    apiBaseLabel: "cobalt server",
-    apiKeyLabel: "api key (if any)",
+      "The server is already wired up; this drawer is only here as a fallback " +
+      "if something breaks. Enter your own cobalt or proxy URL to override.",
+    apiBaseLabel: "server address",
     save: "save",
     settingsHelp:
-      "The address and key live only in this browser. Nothing is sent anywhere else.",
+      "The address lives only in this browser. Nothing is sent anywhere else.",
     saved: "saved.",
     colophon: "set by hand · 2026",
     filenameLabel: "filename",
@@ -112,7 +112,7 @@ const COPY = {
     errPicker:
       "This link contains several pieces — for now I’m gentler with single videos.",
     firstRunHint:
-      "Welcome. The first time round, we need to add a cobalt address in <em>settings</em> below — a one-off thing.",
+      "No server is set yet. Edit <code>DEFAULT_API_BASE</code> in <code>app.js</code>, or paste a URL into <em>settings</em> below.",
     ariaLangToggle: "Switch language",
     ariaSubmit: "Continue",
     ariaFragmentAttr: "who wrote that?",
@@ -301,24 +301,27 @@ function renderError(msgKey, customHTML) {
 
 // ── cobalt API ───────────────────────────────────────────
 function getServer() {
-  return {
-    base: (localStorage.getItem(STORAGE.apiBase) || "").replace(/\/+$/, ""),
-    key: localStorage.getItem(STORAGE.apiKey) || "",
-  };
+  // Override (set via settings drawer) wins over the baked default.
+  const override = localStorage.getItem(STORAGE.apiBase) || "";
+  const base = (override || DEFAULT_API_BASE).replace(/\/+$/, "");
+  return { base };
 }
 
 async function cobaltCall(url, options) {
-  const { base, key } = getServer();
+  const { base } = getServer();
   if (!base) {
     const err = new Error("no-server");
     err.kind = "no-server";
     throw err;
   }
+  // No Authorization header from the browser — when we go through the
+  // Worker proxy the key is added server-side. If the user has
+  // overridden apiBase to point straight at a key-protected cobalt,
+  // they can deploy their own Worker, or run cobalt without keys.
   const headers = {
     "Accept": "application/json",
     "Content-Type": "application/json",
   };
-  if (key) headers["Authorization"] = `Api-Key ${key}`;
 
   let res;
   try {
@@ -565,22 +568,18 @@ function relTime(ts) {
 // ── settings ─────────────────────────────────────────────
 function loadSettingsForm() {
   $("#apiBase").value = localStorage.getItem(STORAGE.apiBase) || "";
-  $("#apiKey").value = localStorage.getItem(STORAGE.apiKey) || "";
 }
 
 function saveSettings() {
   const base = $("#apiBase").value.trim().replace(/\/+$/, "");
-  const key = $("#apiKey").value.trim();
   if (base) localStorage.setItem(STORAGE.apiBase, base);
   else localStorage.removeItem(STORAGE.apiBase);
-  if (key) localStorage.setItem(STORAGE.apiKey, key);
-  else localStorage.removeItem(STORAGE.apiKey);
   const status = $("#settingsStatus");
   status.textContent = t("saved");
   status.classList.add("visible");
   setTimeout(() => status.classList.remove("visible"), 1600);
 
-  // If she just configured a server while idle, drop the first-run hint.
+  // If the configured-state changed while idle, refresh the hint.
   if (STAGE.kind === "idle") renderIdle();
 }
 
@@ -608,9 +607,10 @@ function boot() {
   setGreeting();
   loadSettingsForm();
 
-  // First-run: if no server is configured, open the settings drawer
-  // so it's the first thing she sees. The literary idle still renders
-  // (renderIdle adds its own hint above the fragment).
+  // First-run safety net: if neither the baked DEFAULT_API_BASE nor
+  // an override is set, open the settings drawer so the dev who is
+  // bringing this up sees where to put the URL. With DEFAULT_API_BASE
+  // configured (the deployed-for-Neşe path), this never triggers.
   if (!getServer().base) $(".settings").open = true;
 
   renderIdle();

@@ -1,0 +1,12 @@
+name = "nese-atolye"
+main = "worker.js"
+compatibility_date = "2026-04-29"
+
+# Comma-separated list of origins allowed to call this proxy.
+# Use "*" only for local development.
+[vars]
+ALLOWED_ORIGINS = "https://hamzasahin.github.io"
+
+# Secrets are not declared here — set them with wrangler:
+#   npx wrangler secret put COBALT_URL
+#   npx wrangler secret put COBALT_API_KEY
